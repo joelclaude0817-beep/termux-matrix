@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# Matrix digital rain effect for Termux
+# No external dependencies needed!
+
+clear
+
+# Hide cursor
+printf '\033[?25l'
+
+# Cleanup on exit
+cleanup() {
+    printf '\033[?25h'
+    clear
+    exit
+}
+trap cleanup INT TERM
+
+# Get terminal size using stty
+size=$(stty size 2>/dev/null || echo "24 80")
+lines=$(echo $size | cut -d' ' -f1)
+cols=$(echo $size | cut -d' ' -f2)
+
+# Initialize arrays
+declare -a rain
+declare -a len
+
+for ((i=1; i<=cols; i++)); do
+    rain[$i]=$((RANDOM % lines))
+    len[$i]=$((RANDOM % 10 + 5))
+done
+
+# Main loop
+while true; do
+    for ((i=1; i<=cols; i++)); do
+        y=${rain[$i]}
+        l=${len[$i]}
+        
+        # Bright green head
+        if [ $y -gt 0 ] && [ $y -le $lines ]; then
+            printf "\033[%d;%dH\033[1;32m%d" $y $i $((RANDOM % 2))
+        fi
+        
+        # Green trail
+        for ((j=1; j<l; j++)); do
+            ty=$((y - j))
+            if [ $ty -gt 0 ] && [ $ty -le $lines ]; then
+                printf "\033[%d;%dH\033[0;32m%d" $ty $i $((RANDOM % 2))
+            fi
+        done
+        
+        # Erase tail
+        ey=$((y - l))
+        if [ $ey -gt 0 ] && [ $ey -le $lines ]; then
+            printf "\033[%d;%dH " $ey $i
+        fi
+        
+        # Move down
+        rain[$i]=$((y + 1))
+        
+        # Reset when off screen
+        if [ ${rain[$i]} -gt $((lines + l)) ]; then
+            rain[$i]=$((RANDOM % 20 - 10))
+            len[$i]=$((RANDOM % 10 + 5))
+        fi
+    done
+    
+    sleep 0.05
+done
